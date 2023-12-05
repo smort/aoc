@@ -12,7 +12,7 @@ The engineer explains that an engine part seems to be missing from the engine, b
 
 The engine schematic (your puzzle input) consists of a visual representation of the engine. There are lots of numbers and symbols you don't really understand, but apparently _any number adjacent to a symbol_, even diagonally, is a "part number" and should be included in your sum. (Periods ( `.`) do not count as a symbol.)
 
-Here is an example engine schematic:
+For example, here is an example engine schematic:
 
 ```
 467..114..
