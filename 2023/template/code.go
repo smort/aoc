@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	input := readFile("input-example")
+	input := readFile("input-example.txt")
 }
 
 func readFile(filename string) []string {
