@@ -29,114 +29,147 @@ var cardValue = map[string]int{
 
 type hand struct {
 	Hand string
-	Map  map[string]int
 	Bid  int
 }
 
-func (h hand) IsFiveOfKind() bool {
-	for _, v := range h.Map {
-		return v == 5
-	}
-
-	return false
-}
-
-func (h hand) IsFourOfKind() bool {
-	for _, v := range h.Map {
-		if v == 4 {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (h hand) IsFullHouse() bool {
-	has3 := false
-	has2 := false
-	for _, v := range h.Map {
-		if v == 3 {
-			has3 = true
-		}
-		if v == 2 {
-			has2 = true
-		}
-	}
-
-	return has2 && has3
-}
-
-func (h hand) ThreeOfKind() bool {
-	for _, v := range h.Map {
-		if v == 3 {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (h hand) TwoPair() bool {
-	pairs := 0
-	for _, v := range h.Map {
-		if v == 2 {
-			pairs++
-		}
-	}
-
-	return pairs == 2
-}
-
-func (h hand) OnePair() bool {
-	pairs := 0
-	for _, v := range h.Map {
-		if v == 2 {
-			pairs++
-		}
-	}
-
-	return pairs == 1
-}
-
-func (h hand) HighCard() string {
-	highCard := ""
-
-	for _, c := range h.Hand {
-		val := cardValue[string(c)]
-		if highCard == "" || val > cardValue[highCard] {
-			highCard = string(c)
-		}
-	}
-
-	return highCard
-}
-
 func (h hand) Score() int {
-	if h.IsFiveOfKind() {
-		return 7
+	// sort strongest to weakest
+	cards := strings.Split(h.Hand, "")
+	slices.SortFunc(cards, func(a, b string) int {
+		aVal := cardValue[a]
+		bVal := cardValue[b]
+
+		if bVal > aVal {
+			return 1
+		}
+
+		if aVal > bVal {
+			return -1
+		}
+
+		return 0
+	})
+
+	numWild := 0
+	if isJWild {
+		for i := len(cards) - 1; i >= 0; i-- {
+			if cards[i] == "J" {
+				numWild++
+			} else {
+				break
+			}
+		}
 	}
 
-	if h.IsFourOfKind() {
-		return 6
+	// scorekeeping
+	currCount := 1
+	has5 := false
+	has4 := false
+	hasFullHouse := false
+	hasThreeofAKind := false
+	numPairs := 0
+
+	checkHand := func() {
+		if currCount == 5 {
+			has5 = true
+		}
+
+		if currCount == 4 {
+			has4 = true
+		}
+
+		if currCount == 3 {
+			hasThreeofAKind = true
+		}
+
+		if currCount == 2 {
+			numPairs++
+		}
+
+		if hasThreeofAKind && numPairs > 0 {
+			hasFullHouse = true
+		}
 	}
 
-	if h.IsFullHouse() {
-		return 5
+	prevCard := cards[0]
+	for i := 1; i < len(cards); i++ {
+		currCard := cards[i]
+		if isJWild && currCard == "J" {
+			break
+		}
+
+		if currCard != prevCard {
+			checkHand()
+			currCount = 1
+		} else {
+			currCount++
+		}
+
+		prevCard = currCard
 	}
 
-	if h.ThreeOfKind() {
-		return 4
+	checkHand()
+
+	if isJWild && numWild > 0 {
+		if numWild == 5 {
+			has5 = true
+		}
+
+		if numWild == 4 {
+			has5 = true
+		}
+
+		if numWild == 3 {
+			if numPairs == 1 {
+				has5 = true
+			} else {
+				has4 = true
+			}
+		}
+
+		if numWild == 2 {
+			if hasThreeofAKind {
+				has5 = true
+			} else if numPairs == 1 {
+				has4 = true
+			} else {
+				hasThreeofAKind = true
+			}
+		}
+
+		if numWild == 1 {
+			if has4 {
+				has5 = true
+			} else if hasThreeofAKind {
+				has4 = true
+			} else if numPairs == 2 {
+				hasFullHouse = true
+			} else if numPairs == 1 {
+				hasThreeofAKind = true
+			} else {
+				numPairs = 1
+			}
+		}
 	}
 
-	if h.TwoPair() {
-		return 3
+	score := 1
+	if has5 {
+		score = 7
+	} else if has4 {
+		score = 6
+	} else if hasFullHouse {
+		score = 5
+	} else if hasThreeofAKind {
+		score = 4
+	} else if numPairs == 2 {
+		score = 3
+	} else if numPairs == 1 {
+		score = 2
 	}
 
-	if h.OnePair() {
-		return 2
-	}
+	fmt.Printf("hand: %v sorted: %v, score: %v\n", h.Hand, strings.Join(cards, ""), score)
 
-	return 1
+	return score
 }
 
 func (h hand) Compare(other hand) int {
@@ -172,11 +205,28 @@ func (h hand) Compare(other hand) int {
 func main() {
 	input := readFile("input-user.txt")
 	hands := parseInput(input)
-	fmt.Println(hands)
+
 	fmt.Println("Part 1:", part1f(hands))
+	fmt.Println("Part 2:", part2f(hands))
 }
 
 func part1f(hands []hand) int {
+	slices.SortFunc(hands, func(a, b hand) int {
+		return a.Compare(b)
+	})
+
+	score := hands[0].Bid
+	for i := 1; i < len(hands); i++ {
+		score += hands[i].Bid * (i + 1)
+	}
+
+	return score
+}
+
+func part2f(hands []hand) int {
+	isJWild = true
+	cardValue["J"] = 1
+
 	slices.SortFunc(hands, func(a, b hand) int {
 		return a.Compare(b)
 	})
@@ -202,19 +252,8 @@ func parseInput(input []string) []hand {
 			log.Fatal(err)
 		}
 
-		mapped := make(map[string]int, len(lineSplit[0]))
-		for _, c := range lineSplit[0] {
-			s := string(c)
-			if val, exists := mapped[s]; exists {
-				mapped[s] = val + 1
-			} else {
-				mapped[s] = 1
-			}
-		}
-
 		hands[i] = hand{
 			Hand: lineSplit[0],
-			Map:  mapped,
 			Bid:  bid,
 		}
 	}
